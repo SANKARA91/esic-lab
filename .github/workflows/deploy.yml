@@ -1,0 +1,39 @@
+name: esic-lab CI/CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: esiclabacr.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push image
+        run: |
+          docker build -t esiclabacr.azurecr.io/esic-app:${{ github.sha }} ./app
+          docker build -t esiclabacr.azurecr.io/esic-app:latest ./app
+          docker push esiclabacr.azurecr.io/esic-app:${{ github.sha }}
+          docker push esiclabacr.azurecr.io/esic-app:latest
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: esic-lab-rg
+          cluster-name: esic-lab-aks
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to AKS
+        run: |
+          kubectl apply -f k8s/
+          kubectl set image deployment/esic-app \
+            esic-app=esiclabacr.azurecr.io/esic-app:${{ github.sha }}
+          kubectl rollout status deployment/esic-app
