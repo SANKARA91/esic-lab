@@ -24,12 +24,16 @@ jobs:
           docker push esiclabacr.azurecr.io/esic-app:${{ github.sha }}
           docker push esiclabacr.azurecr.io/esic-app:latest
 
+      - name: Azure login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: Set AKS context
         uses: azure/aks-set-context@v3
         with:
           resource-group: esic-lab-rg
           cluster-name: esic-lab-aks
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Deploy to AKS
         run: |
